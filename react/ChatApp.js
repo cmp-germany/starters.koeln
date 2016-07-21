@@ -299,9 +299,10 @@ var ChatApp = React.createClass({
   },
 
   componentDidMount: function() {
-    this.signalR = {};
-    this.signalR.chat = $.connection.chat;
-    this.signalR.chat.connection.start({ transport: 'longPolling' });
+    $.connection.hub.url = 'http://test_koelndemo.cmpg.eu/signalr'
+    $.connection.hub.start().done(function () {
+      console.log($.connection.hub);
+    }.bind(this));
     //console.log("This is a test.");
   },
 
