@@ -300,9 +300,13 @@ var ChatApp = React.createClass({
 
   componentDidMount: function() {
     $.connection.hub.url = 'http://test_koelndemo.cmpg.eu/signalr'
+
     $.connection.hub.start().done(function () {
-      console.log($.connection.hub);
-    }.bind(this));
+      console.log("Connected, transport = " + $.connection.hub.transport.name);
+    });
+
+
+
     //console.log("This is a test.");
   },
 
