@@ -21,7 +21,7 @@ module.exports = {
       {
         test: /\.jsx?$/,
         exclude: /(node_modules|bower_components)/,
-        loaders: ['react-hot', 'babel-loader?{presets:["react", "es2015"]}']
+        loaders: ['react-hot-loader/webpack', 'babel-loader?{presets:["react", "es2015"]}']
       },
       {
         test: /\.json$/,
