@@ -31,8 +31,5 @@ module.exports = {
       { test: /\.js$/, loader: 'exports-loader' }
     ]
   },
-  plugins: [
-    new webpack.HotModuleReplacementPlugin()
-  ],
-  devtool: "source-map"
+  devtool: 'eval-source-map'
 };

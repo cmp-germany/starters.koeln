@@ -4,7 +4,7 @@ const Notification = require('./components/Notification');
 const NotificationErrorMessage = require('./components/NotificationErrorMessage');
 const MaterialDesignMixin = require('../mixins/MaterialDesignMixin');
 const NotificationLoadMore = require("./components/NotificationLoadMore");
-
+const TimeOut = 1000; //milliseconds
 var FriendRequestsModule = React.createClass({
   mixins: [MaterialDesignMixin],
 
@@ -12,7 +12,8 @@ var FriendRequestsModule = React.createClass({
     return {
       unseenRequestsCount : null,
       friendRequests: [],
-      currentState: "initLoading"
+      currentState: "initLoading",
+      allCount: 0
     }
   },
 
@@ -29,7 +30,7 @@ var FriendRequestsModule = React.createClass({
     this.loadData();
   },
 
-  loadData: function(pageNumber = 1) {
+  loadData: function(pageNumber = 1, onLoadingDone) {
     var getAllFriendRequestsUrl = this.props.webserviceBase + this.props.servicePaths.getActive;
     this.serverRequest = $.get(
       getAllFriendRequestsUrl,
@@ -40,13 +41,29 @@ var FriendRequestsModule = React.createClass({
       },
       function (result) {
         if(result.success){
-          console.log(result);
+
+          var friendRequests;
+          friendRequests = this.state.friendRequests;
+          Array.prototype.push.apply(friendRequests, result.data.FriendRequests);
+
+          var newState;
+          if (friendRequests.length < result.data.AllCount) {
+            newState = "loadMore";
+          } else {
+            newState = "loaded";
+          }
+
           this.setState({
-            currentState: "loaded",
+            currentState: newState,
             unseenRequestsCount: result.data.UnseenRequestsCount,
-            friendRequests: result.data.FriendRequests,
+            friendRequests: friendRequests,
             allCount: result.data.AllCount
           });
+
+          if (onLoadingDone) {
+            onLoadingDone();
+          }
+
         }
         else{
           var error = null;
@@ -60,27 +77,115 @@ var FriendRequestsModule = React.createClass({
     }.bind(this));
   },
 
+  onLoadMore: function(onLoadingDone) {
+    // calculate the pageNumber, which needs to be loaded
+    var currentCount = this.state.friendRequests.length;
+    var pageSize = this.props.pageSize;
+    var currentPageNumber = currentCount / pageSize;
+    var loadPageNumber = currentPageNumber + 1;
+
+    // loadData. Call the function onLoadingDone after Loading is done
+    this.loadData(loadPageNumber, onLoadingDone);
+  },
+
   componentWillUnmount: function() {
     this.serverRequest.abort();
   },
 
-  acceptFriendRequest: function(friendRequestId){
-    var url = this.props.servicePath+'/AcceptFriendRequest/';
-    $.post(url, {friendRequestId}, function(data){
-      if(data.success){
-        var allData = this.state.data;
-        var index = allData.findIndex(x => x.Id===friendRequestId);
-        allData[index].isAccepted = true;
-        setState({allData});
-      }
-      else{
-
-      }
-    });
+  removeWithTimeout: function(friendRequestId, timeOut){
+    setTimeout(function() {
+      var allData = this.state.friendRequests;
+      var index = allData.findIndex(x => x.Id===friendRequestId);
+      allData.splice(index, 1);
+      this.setState({allData});
+    }.bind(this), timeOut);
   },
 
-  deleteFriendRequest: function(friendRequestId){
+  acceptFriendRequest: function(friendRequestId){
+    var allData = this.state.friendRequests;
+    var index = allData.findIndex(x => x.Id===friendRequestId);
+    allData[index].isLoading = true;
+    this.setState({friendRequests:allData});
+    var acceptFriendRequestUrl = this.props.webserviceBase + this.props.servicePaths.accept;
+    $.post(
+      acceptFriendRequestUrl,
+      {
+        friendRequestId: friendRequestId
+      },
+      function(result){
+        if(result.success){
+          allData[index].isLoading = false;
+          allData[index].isAccepted = true;
+          this.setState({friendRequests:allData});
+          this.removeWithTimeout(friendRequestId, TimeOut);
+        }
+        else{
+          allData[index].isLoading = false;
+          allData[index].isError = true;
+          this.setState({friendRequests:allData});
+        }
+      }.bind(this)
+    );
+  },
 
+  declineFriendRequest: function(friendRequestId){
+    var allData = this.state.friendRequests;
+    var index = allData.findIndex(x => x.Id===friendRequestId);
+    allData[index].isLoading = true;
+    this.setState({allData});
+    var declineFriendRequestUrl = this.props.webserviceBase + this.props.servicePaths.decline;
+    try{
+      $.post(
+        declineFriendRequestUrl,
+        {
+          friendRequestId: friendRequestId
+        },
+        function(result){
+          if(result.success){
+            allData[index].isLoading = false;
+            allData[index].isDeleted = true;
+            this.setState({allData});
+            this.removeWithTimeout(friendRequestId, TimeOut);
+          }
+          else{
+            allData[index].isLoading = false;
+            allData[index].isError = true;
+            this.setState({friendRequests:allData});
+          }
+        }.bind(this)
+      );
+    }
+    catch(e){
+      allData[index].isLoading = false;
+      allData[index].isError = true;
+      this.setState({friendRequests:allData});
+    }
+  },
+
+  handleError: function(friendRequestId, errorMessage){
+    var message = friendRequestId + ' has error: ' + errorMessage;
+    console.log(message);
+    //Todo: handle error in a better way please.
+    if(this.state){
+      if(this.state.friendRequests){
+        var allData = this.state.friendRequests;
+        var index = allData.findIndex(x => x.Id===friendRequestId);
+        allData[index].isError = true;
+        allData[index].errorMessage = message;
+        this.setState({allData});
+      }
+    }
+  },
+
+  errorRetry: function(friendRequestId){
+    var allData = this.state.friendRequests;
+    var index = allData.findIndex(x => x.Id===friendRequestId);
+    allData[index].isError = false;
+    this.setState({allData});
+  },
+
+  mainIconClicked: function(){
+    return false;
   },
 
   render: function(){
@@ -110,7 +215,15 @@ var FriendRequestsModule = React.createClass({
               return;
             }
             return (
-              <Notification servicePaths={this.props.servicePaths} data={data} key={data.Id} />
+              <Notification
+                webserviceBase={this.props.webserviceBase}
+                servicePaths={this.props.servicePaths}
+                data={data}
+                key={data.Id}
+                onAccept={this.acceptFriendRequest}
+                onDecline={this.declineFriendRequest}
+                onError={this.handleError}
+                onErrorRetry={this.errorRetry}/>
             );
           }.bind(this));
           if (this.state.friendRequests.length == 0) {
@@ -119,21 +232,29 @@ var FriendRequestsModule = React.createClass({
           badge = this.state.unseenRequestsCount;
         }
         break;
-      case "load-more":
+      case "loadMore":
         {
           notifications = this.state.friendRequests.map(function(data){
             if (data.DateAccepted) {
               return;
             }
             return (
-              <Notification servicePaths={this.props.servicePaths} data={data} key={data.Id} />
+              <Notification
+                webserviceBase={this.props.webserviceBase}
+                servicePaths={this.props.servicePaths}
+                data={data}
+                key={data.Id}
+                onAccept={this.acceptFriendRequest}
+                onDecline={this.declineFriendRequest}
+                onError={this.handleError}
+                onErrorRetry={this.errorRetry}/>
             );
           }.bind(this));
           if (this.state.friendRequests.length == 0) {
             notifications = <NotificationErrorMessage errorMessage="Keine Anfragen" />;
           }
           if (Array.isArray(notifications)) {
-            notifications.push(<NotificationLoadMore />);
+            notifications.push(<NotificationLoadMore key="loadMore" onLoadMore={this.onLoadMore} />);
           } else {
             notifications = (<NotificationLoadMore />);
           }
@@ -148,9 +269,9 @@ var FriendRequestsModule = React.createClass({
 
     return (
       <div className="navbar-notification">
-        <button className="navbar-notification__toggle-button" data-toggle="collapse" data-target="#friend-requests" aria-expanded="false">
+        <a href='javascript:void(0)' className="navbar-notification__toggle-button" data-toggle="collapse" data-target="#friend-requests" aria-expanded="false" onClick={this.mainIconClicked}>
           <i className="material-icons mdl-badge mdl-badge--overlap" data-badge={badge}>people_outline</i>
-        </button>
+        </a>
 
         <div className="notification-container collapse" id="friend-requests">
           {notifications}
