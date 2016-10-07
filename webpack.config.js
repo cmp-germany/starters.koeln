@@ -3,14 +3,17 @@ var webpack = require('webpack');
 
 
 module.exports = {
+  context: __dirname,
   resolve: {
     extensions: ['', '.js', '.jsx']
   },
   entry: [
+    'webpack-dev-server/client?http://localhost:8080',
+    'webpack/hot/only-dev-server',
     './js/navigation.js'
   ],
   output: {
-    path: './js',
+    path: __dirname + '/js',
     filename: 'navigation.bundle.js'
   },
   module: {
@@ -18,11 +21,7 @@ module.exports = {
       {
         test: /\.jsx?$/,
         exclude: /(node_modules|bower_components)/,
-        loader: 'babel-loader',
-        query: {
-          presets: ['react', 'es2015'],
-          plugins: [],
-        }
+        loaders: ['react-hot', 'babel-loader?{presets:["react", "es2015"]}']
       },
       {
         test: /\.json$/,
@@ -31,5 +30,9 @@ module.exports = {
       },
       { test: /\.js$/, loader: 'exports-loader' }
     ]
-  }
+  },
+  plugins: [
+    new webpack.HotModuleReplacementPlugin()
+  ],
+  devtool: "source-map"
 };

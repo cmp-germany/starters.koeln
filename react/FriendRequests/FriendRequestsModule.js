@@ -154,6 +154,7 @@ var FriendRequestsModule = React.createClass({
 
         <div className="notification-container collapse" id="friend-requests">
           {notifications}
+          {notifications}
         </div>
       </div>
 
