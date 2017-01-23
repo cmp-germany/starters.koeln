@@ -1,3 +1,6 @@
+import React    from 'react';
+import ReactDOM from 'react-dom';
+
 var IfNotNullModule = React.createClass({
   render: function () {
 
@@ -100,7 +103,8 @@ var PeopleCardModule = React.createClass({
   render: function() {
     var data = this.props.data;
     return (
-      <div className="col-lg-4 col-md-6 col-sm-6 profile-card clearfix"><div className="profile-card__innerDiv clearfix">
+      <div className="col-lg-4 col-md-6 col-sm-6 profile-card clearfix">
+        <div className="profile-card__innerDiv clearfix">
           <div className="col-xs-4 profile-card__image">
             <img src={data.picture} alt className="img-responsive" />
           </div>

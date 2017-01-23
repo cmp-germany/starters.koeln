@@ -8,7 +8,8 @@ module.exports = {
   },
   entry: {
     'navigation': './js/navigation.js',
-    'messages': './js/messages.js'
+    'messages': './js/messages.js',
+    'landingpage': './react/LandingPage.js'
   },
   output: {
     path: './js',

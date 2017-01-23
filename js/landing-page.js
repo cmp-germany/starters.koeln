@@ -1,7 +1,5 @@
 var innerDivElementsToBeCreated = {
   "slide--with-background": "slide--with-background__inner-div",
-  "profile-card": "profile-card__innerDiv clearfix",
-  "register-card": "register-card__innerDiv clearfix"
 };
 
 
